@@ -9,7 +9,7 @@ use Getopt::Long qw(:config bundling);
 # Command-line options.
 our ($start_time) = time ();
 our ($sim);			# Simulator: bochs, qemu, or player.
-our ($debug) = "none";		# Debugger: none, monitor, or gdb.
+our ($debug) = "gdb";		# Debugger: none, monitor, or gdb.
 our ($mem) = 4;			# Physical RAM in MB.
 our ($serial) = 1;		# Use serial port for input and output?
 our ($vga);			# VGA output: window, terminal, or none.
