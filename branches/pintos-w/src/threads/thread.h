@@ -17,7 +17,7 @@ enum thread_status
 /* states the system in system/user state */
 enum system_status
 	{
-		SYSTEN_KERNEL,SYSTEM_USER
+		SYSTEM_KERNEL,SYSTEM_USER
 	};
 
 /* Thread identifier type.
