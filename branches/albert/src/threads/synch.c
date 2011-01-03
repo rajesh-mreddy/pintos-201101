@@ -189,13 +189,24 @@ lock_init (struct lock *lock)
    interrupt handler.  This function may be called with
    interrupts disabled, but interrupts will be turned back on if
    we need to sleep. */
+int old_pri;
+int is_donated = 0;                          //albert
+
 void
 lock_acquire (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
+  
+  /* Priority donate implentmentation */   
+  if(((lock->semaphore)->value == 0) 
+     && (((lock->holder)->priority) < (thread_current()->priority)))
+  {
+    old_pri = (lock->holder)->priority;
+    (lock->holder)->priority = thread_current()->priority;
+    is_donated = 1;
+  }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 }
@@ -224,13 +235,18 @@ lock_try_acquire (struct lock *lock)
 
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to release a lock within an interrupt
-   handler. */
-void
+   handler. */ 
+void                                         //albert
 lock_release (struct lock *lock) 
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
+  /* Priority onate -- Restore priority */
+  if (is_donated == 1)
+  {
+    (lock->holder)->priority = old_pri;
+    is_donated = 0;
+  }
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
