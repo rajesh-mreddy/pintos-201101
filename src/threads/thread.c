@@ -71,6 +71,9 @@ static void schedule (void);
 void schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+/* Priority Schedule List Elem */
+static 
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -245,7 +248,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &cur->elem, *list_less, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -316,7 +319,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, *list_less, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -339,11 +342,19 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
+/* Sets the current thread's priority to NEW_PRIORITY. */    //albert 
 void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  //change into preempt.(if running thread's priority is not the highest, yield.) 
+  struct thread *tmp;
+  if(!list_empty(&ready_list))
+    tmp = list_entry(list_begin(&ready_list), struct thread, elem);
+  else
+    tmp = running_thread();
+  if(new_priority < (tmp->priority))
+    thread_yield();
 }
 
 /* Returns the current thread's priority. */
@@ -496,6 +507,8 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
+  {
+    while(list_pop_front)
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
@@ -581,6 +594,19 @@ allocate_tid (void)
 
   return tid;
 }
+
+/* function which compare the priority, if a>b return true */  //albert
+bool list_less(struct list_elem *a, struct list_elem *b, void *aux)
+{
+  struct thread *tmp1, *tmp2; 
+  tmp1 = list_entry(a, struct thread, elem);
+  tmp2 = list_entry(b, struct thread, elem);
+  if ((tmp1->priority) > (tmp2->priority))
+    return 1;
+  else  
+    return 0;
+}
+
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
