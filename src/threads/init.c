@@ -120,6 +120,7 @@ main (void)
 #endif
 
   printf ("Boot complete.\n");
+	set_system_status(SYSTEM_USER);
   
   /* Run actions specified on kernel command line. */
   run_actions (argv);

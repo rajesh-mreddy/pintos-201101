@@ -14,6 +14,12 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
+/* states the system in system/user state */
+enum system_status
+	{
+		SYSTEN_KERNEL,SYSTEM_USER
+	};
+
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -107,6 +113,8 @@ struct thread
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
+void set_system_status(enum system_status);
+
 void thread_init (void);
 void thread_start (void);
 
@@ -118,6 +126,7 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
+int high_priority(struct list_elem *, struct list_elem *, void *);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);

@@ -59,6 +59,8 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+enum system_status sstatus;
+
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -70,6 +72,12 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+
+void
+set_system_status(enum system_status s)
+{
+	sstatus=s;
+}
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -245,9 +253,23 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+	list_insert_ordered (&ready_list, &t->elem, &high_priority,NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
+
+	//change into preempt.(if running thread's priority is not the highest, yield.)
+	if(sstatus==SYSTEM_USER && running_thread()->priority < (t->priority))
+		thread_yield();
+}
+
+/*	list_less_func for list_insert_ordered,use as:
+		list_insert_ordered (&ready_list, &t->elem, &high_priority,NULL);	*/
+int high_priority(struct list_elem *elem1,struct list_elem *elem2,void *aux)
+{
+	struct thread *t1 = list_entry (elem1, struct thread, elem);
+	struct thread *t2 = list_entry (elem2, struct thread, elem);
+	aux;
+	return t1->priority > t2->priority;
 }
 
 /* Returns the name of the running thread. */
@@ -315,8 +337,8 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+  if (cur != idle_thread) {
+		list_insert_ordered (&ready_list, &cur->elem, &high_priority,NULL);}
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
