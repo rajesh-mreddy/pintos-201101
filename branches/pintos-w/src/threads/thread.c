@@ -106,6 +106,9 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
+	/* change system_status in kernel mode, will changed in init.c */
+	set_system_status(SYSTEM_KERNEL);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
