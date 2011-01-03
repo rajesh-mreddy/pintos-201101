@@ -71,8 +71,6 @@ static void schedule (void);
 void schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-/* Priority Schedule List Elem */
-static 
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -240,17 +238,26 @@ thread_block (void)
    it may expect that it can atomically unblock a thread and
    update other data. */
 void
-thread_unblock (struct thread *t) 
+thread_unblock (struct thread *t)   //albert
 {
   enum intr_level old_level;
-
+  struct thread *thread_hpri;
+  
   ASSERT (is_thread (t));
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_insert_ordered (&ready_list, &cur->elem, *list_less, NULL);
+  list_insert_ordered (&ready_list, &t->elem, &list_less, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
+  
+  /* change into preempt.(if unblocked thread's priority is highier, yield.) */
+  if(!list_empty(&ready_list))
+    thread_hpri = list_entry(list_begin(&ready_list), struct thread, elem);
+  else
+    thread_hpri = running_thread();
+  if(running_thread() < (thread_hpri->priority))
+    thread_yield();
 }
 
 /* Returns the name of the running thread. */
@@ -319,7 +326,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_insert_ordered (&ready_list, &cur->elem, *list_less, NULL);
+    list_insert_ordered (&ready_list, &cur->elem, &list_less, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -347,14 +354,14 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-  //change into preempt.(if running thread's priority is not the highest, yield.) 
-  struct thread *tmp;
+  /* change into preempt.(if running thread's priority is not the highest, yield.) */
+  struct thread *thread_hpri;
   if(!list_empty(&ready_list))
-    tmp = list_entry(list_begin(&ready_list), struct thread, elem);
-  else
-    tmp = running_thread();
-  if(new_priority < (tmp->priority))
-    thread_yield();
+  {
+    thread_hpri = list_entry(list_begin(&ready_list), struct thread, elem);
+    if(new_priority < (thread_hpri->priority))
+      thread_yield();
+  }
 }
 
 /* Returns the current thread's priority. */
