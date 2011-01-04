@@ -3,6 +3,7 @@
 
 #include <list.h>
 #include <stdbool.h>
+#include "threads/thread.h"
 
 /* A counting semaphore. */
 struct semaphore 
@@ -17,12 +18,20 @@ bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
 
+struct donate_node
+	{
+		int thread_priority;			/* priority of current thread */ 
+		int old_priority;					/* priority before donation */ 
+		struct thread * donate_to;/* therad donate to */
+		struct list_elem elem;
+	};
+
 /* Lock. */
 struct lock 
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
-		int old_priority;						/* priority before donation */ 
+		struct list donate_list;						
 		bool is_donated;						/* whether the lock is donated */
   };
 
@@ -51,3 +60,4 @@ void cond_broadcast (struct condition *, struct lock *);
 #define barrier() asm volatile ("" : : : "memory")
 
 #endif /* threads/synch.h */
+
