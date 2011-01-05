@@ -33,11 +33,11 @@
 
 /*	list_less_func for list_insert_ordered,use as:
 		list_insert_ordered (&ready_list, &t->elem, &donate_high_priority,NULL);	*/
-int donate_high_priority(struct list_elem *elem1,struct list_elem *elem2,void *aux)
+bool donate_high_priority(struct list_elem *elem1,struct list_elem *elem2,void *aux)
 {
 	struct donate_node *t1 = list_entry (elem1, struct donate_node, elem);
 	struct donate_node *t2 = list_entry (elem2, struct donate_node, elem);
-	aux;
+	aux = NULL;
 	return t1->thread_priority > t2->thread_priority;
 }
 

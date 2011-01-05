@@ -35,6 +35,7 @@ struct lock
 		bool is_donated;						/* whether the lock is donated */
   };
 
+bool donate_high_priority(struct list_elem *,struct list_elem *,void *);
 void lock_init (struct lock *);
 void lock_acquire (struct lock *);
 bool lock_try_acquire (struct lock *);
