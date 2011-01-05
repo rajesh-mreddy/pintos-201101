@@ -19,20 +19,20 @@ void sema_up (struct semaphore *);
 void sema_self_test (void);
 
 struct donate_node
-	{
-		int thread_priority;			/* priority of current thread */ 
-		int old_priority;					/* priority before donation */ 
-		struct thread * donate_to;/* therad donate to */
-		struct list_elem elem;
-	};
+  {
+    int new_priority;           /* priority of current thread */ 
+    int old_priority;           /* priority before donation */ 
+    struct thread * donate_to;  /* therad donate to */
+    struct list_elem elem;
+  };
 
 /* Lock. */
 struct lock 
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
-		struct list donate_list;						
-		bool is_donated;						/* whether the lock is donated */
+    struct list donate_list;            
+    bool is_donated;            /* whether the lock is donated */
   };
 
 bool donate_high_priority(struct list_elem *,struct list_elem *,void *);

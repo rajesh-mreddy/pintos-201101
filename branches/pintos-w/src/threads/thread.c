@@ -76,7 +76,7 @@ static tid_t allocate_tid (void);
 void
 set_system_status(enum system_status s)
 {
-	sstatus=s;
+  sstatus=s;
 }
 
 /* Initializes the threading system by transforming the code
@@ -107,8 +107,8 @@ thread_init (void)
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
 
-	/* change system_status in kernel mode, will changed in init.c */
-	set_system_status(SYSTEM_KERNEL);
+  /* change system_status in kernel mode, will changed in init.c */
+  set_system_status(SYSTEM_KERNEL);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -256,24 +256,24 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-	list_insert_ordered (&ready_list, &t->elem, &high_priority, NULL);
+  list_insert_ordered (&ready_list, &t->elem, &high_priority, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 
-	//change into preempt.(if running thread's priority is not the highest, yield.)
-	if(sstatus==SYSTEM_USER && running_thread()->priority < (t->priority))
-		thread_yield();
+  //change into preempt.(if running thread's priority is not the highest, yield.)
+  if(sstatus==SYSTEM_USER && running_thread()->priority < (t->priority))
+    thread_yield();
 }
 
-/*	list_less_func for list_insert_ordered,use as:
-		list_insert_ordered (&ready_list, &t->elem, &high_priority, NULL);	
-		parameter void * aux can be nothing, need not to use it. */
+/*  list_less_func for list_insert_ordered,use as:
+    list_insert_ordered (&ready_list, &t->elem, &high_priority, NULL);  
+    parameter void * aux can be nothing, need not to use it. */
 bool high_priority(struct list_elem *elem1,struct list_elem *elem2,void *aux)
 {
-	struct thread *t1 = list_entry (elem1, struct thread, elem);
-	struct thread *t2 = list_entry (elem2, struct thread, elem);
-	aux = NULL;
-	return t1->priority > t2->priority;
+  struct thread *t1 = list_entry (elem1, struct thread, elem);
+  struct thread *t2 = list_entry (elem2, struct thread, elem);
+  aux = NULL;
+  return t1->priority > t2->priority;
 }
 
 /* Returns the name of the running thread. */
@@ -342,7 +342,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) {
-		list_insert_ordered (&ready_list, &cur->elem, &high_priority, (void*)NULL);}
+    list_insert_ordered (&ready_list, &cur->elem, &high_priority, (void*)NULL);}
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -370,14 +370,14 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-	//change into preempt.(if running thread's priority is not the highest, yield.)
-	struct thread *tmp;
-	if(!list_empty(&ready_list))
-		{
-			tmp = list_entry(list_begin(&ready_list), struct thread, elem);
-			if(new_priority < (tmp->priority))
-			thread_yield();
-		}
+  //change into preempt.(if running thread's priority is not the highest, yield.)
+  struct thread *tmp;
+  if(!list_empty(&ready_list))
+    {
+      tmp = list_entry(list_begin(&ready_list), struct thread, elem);
+      if(new_priority < (tmp->priority))
+      thread_yield();
+    }
 }
 
 /* Returns the current thread's priority. */
@@ -504,6 +504,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+  list_init(&t->not_restore_list);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

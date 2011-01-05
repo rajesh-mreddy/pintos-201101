@@ -16,9 +16,9 @@ enum thread_status
 
 /* states the system in system/user state */
 enum system_status
-	{
-		SYSTEM_KERNEL,SYSTEM_USER
-	};
+  {
+    SYSTEM_KERNEL,SYSTEM_USER
+  };
 
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
@@ -98,6 +98,7 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    struct list not_restore_list;       /* List of donate_node that not restore yet */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

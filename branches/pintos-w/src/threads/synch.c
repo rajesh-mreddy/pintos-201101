@@ -31,14 +31,14 @@
 #include <string.h>
 #include "threads/interrupt.h"
 
-/*	list_less_func for list_insert_ordered,use as:
-		list_insert_ordered (&ready_list, &t->elem, &donate_high_priority,NULL);	*/
+/*  list_less_func for list_insert_ordered,use as:
+    list_insert_ordered (&ready_list, &t->elem, &donate_high_priority,NULL);  */
 bool donate_high_priority(struct list_elem *elem1,struct list_elem *elem2,void *aux)
 {
-	struct donate_node *t1 = list_entry (elem1, struct donate_node, elem);
-	struct donate_node *t2 = list_entry (elem2, struct donate_node, elem);
-	aux = NULL;
-	return t1->thread_priority > t2->thread_priority;
+  struct donate_node *t1 = list_entry (elem1, struct donate_node, elem);
+  struct donate_node *t2 = list_entry (elem2, struct donate_node, elem);
+  aux = NULL;
+  return t1->new_priority > t2->new_priority;
 }
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
@@ -187,9 +187,9 @@ lock_init (struct lock *lock)
   ASSERT (lock != NULL);
 
   lock->is_donated = 0;
-	lock->holder = NULL;
+  lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
-	list_init (&lock->donate_list);
+  list_init (&lock->donate_list);
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -207,24 +207,23 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-	/* Priority donate implentmentation */
-	if((lock->semaphore).value == 0)
-	{
-		struct donate_node n;
-		n.thread_priority=thread_current()->priority;
-		
-		if(((lock->holder)->priority) < (thread_current()->priority))
-		{
-			n.donate_to=lock->holder;
-			n.old_priority = (lock->holder)->priority;
-			(lock->holder)->priority = thread_current()->priority;
-		}
-		else
-			n.donate_to=NULL;
-		
-		list_insert_ordered (&lock->donate_list, &n.elem, &donate_high_priority, NULL);
-		//lock->is_donated++;
-	}
+  /* Priority donate implentmentation */
+  if((lock->semaphore).value == 0)
+  {
+    struct donate_node n;
+    n.new_priority=thread_current()->priority;
+    
+    if(((lock->holder)->priority) < (thread_current()->priority))
+    {
+      n.donate_to=lock->holder;
+      n.old_priority = (lock->holder)->priority;
+      (lock->holder)->priority = thread_current()->priority;
+    }
+    else
+      n.donate_to=NULL;
+    
+    list_insert_ordered (&lock->donate_list, &n.elem, &donate_high_priority, NULL);
+  }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 }
@@ -260,18 +259,44 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-	/* Priority onate -- Restore priority */
-	if(list_size(&lock->donate_list) > 0)
-	{
-		struct donate_node *n;
-		struct list_elem *e;
-		e=list_pop_front (&lock->donate_list);
-		n=list_entry (e, struct donate_node, elem);
-		
-		if(n->donate_to!=NULL)
-			n->donate_to->priority = n->old_priority;
-	}
-	
+  /* Priority donate -- Restore priority */
+  if(list_size(&lock->donate_list) > 0)
+  {
+    struct donate_node *n;
+    struct list_elem *e;
+    int old_pri;
+    
+    e=list_pop_front (&lock->donate_list);
+    n=list_entry (e, struct donate_node, elem);
+        
+    if(n->new_priority < n->donate_to->priority)
+    {
+      /* can not restore because the lock's holder were donated 
+      by other high priority thread. Should save this info in a list. */
+      list_insert_ordered (&n->donate_to->not_restore_list, &n->elem, &donate_high_priority, NULL);
+    }
+    else
+    {
+      /* restore the donated priority */
+      old_pri = n->old_priority;
+      n->donate_to->priority = old_pri;
+      do
+      {
+        /* process the situation that thread release the lock but not restore priority */
+        e = list_begin(&n->donate_to->not_restore_list);
+        n = list_entry (e, struct donate_node, elem);
+        if(n->new_priority == old_pri)
+        {
+          old_pri = n->old_priority;
+          n->donate_to->priority = old_pri;
+          list_pop_front (&n->donate_to->not_restore_list);
+        }
+        else
+          break;
+      }while(!list_empty(&n->donate_to->not_restore_list));
+    }
+  }
+  
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
