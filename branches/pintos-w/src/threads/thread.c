@@ -256,7 +256,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-	list_insert_ordered (&ready_list, &t->elem, &high_priority,NULL);
+	list_insert_ordered (&ready_list, &t->elem, &high_priority, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 
@@ -266,12 +266,13 @@ thread_unblock (struct thread *t)
 }
 
 /*	list_less_func for list_insert_ordered,use as:
-		list_insert_ordered (&ready_list, &t->elem, &high_priority,NULL);	*/
-int high_priority(struct list_elem *elem1,struct list_elem *elem2,void *aux)
+		list_insert_ordered (&ready_list, &t->elem, &high_priority, NULL);	
+		parameter void * aux can be nothing, need not to use it. */
+bool high_priority(struct list_elem *elem1,struct list_elem *elem2,void *aux)
 {
 	struct thread *t1 = list_entry (elem1, struct thread, elem);
 	struct thread *t2 = list_entry (elem2, struct thread, elem);
-	aux;
+	aux = NULL;
 	return t1->priority > t2->priority;
 }
 
@@ -341,7 +342,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) {
-		list_insert_ordered (&ready_list, &cur->elem, &high_priority,NULL);}
+		list_insert_ordered (&ready_list, &cur->elem, &high_priority, (void*)NULL);}
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
