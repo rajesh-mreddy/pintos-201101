@@ -206,26 +206,41 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  struct thread *cur;
+  cur = thread_current();
+  cur->acquire_lock = lock;                  /* thread is acquiring the lock */
+  
   /* Priority donate implentmentation */
-  if((lock->semaphore).value == 0)
+  if((lock->semaphore).value == 0)           /* should donate */
   {
-    struct donate_node n;
-    n.new_priority=thread_current()->priority;
-    
-    if(((lock->holder)->priority) < (thread_current()->priority))
+    struct lock *lock_bak;
+    lock_bak = lock;
+    do
     {
-      n.donate_to=lock->holder;
-      n.old_priority = (lock->holder)->priority;
-      (lock->holder)->priority = thread_current()->priority;
-      (lock->holder)->is_donated += 1;
-    }
-    else
-      n.donate_to=NULL;
-    
-    list_insert_ordered (&lock->donate_list, &n.elem, &donate_high_priority, NULL);
+      struct donate_node *n;
+      n = (struct donate_nonde *)malloc(sizeof(struct donate_node));
+      cur->acquire_lock = lock;                  /* thread is acquiring the lock */
+      ASSERT(n != NULL);
+
+      n->new_priority = cur->priority;
+      if(lock->holder->priority < cur->priority)
+      {
+        n->donate_to = lock->holder;
+        n->old_priority = (lock->holder)->priority;
+        (lock->holder)->priority = cur->priority;
+        (lock->holder)->is_donated += 1;
+      }
+      else
+        n->donate_to = NULL;
+      list_insert_ordered (&lock->donate_list, &n->elem, &donate_high_priority, NULL);
+      lock = lock->holder->acquire_lock;     /* lock move to hoder's acquiring lock, */
+    }while(lock);                            /* if hoder is not acquiring any lock, */
+    lock = lock_bak;                         /* is NULL, and break the while. then restore bak*/
+
   }
   sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+  cur->acquire_lock = NULL;                  /* thread acquired the lock */
+  lock->holder = cur;
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
