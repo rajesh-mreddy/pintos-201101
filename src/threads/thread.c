@@ -20,13 +20,14 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/* List of processes in THREAD_READY state, that is, processes
-   that are ready to run but not actually running. */
-static struct list ready_list;
-
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
+
+/* List of processes in THREAD_READY state, that is, processes
+   that are ready to run but not actually running. */
+static struct list ready_list;
+static struct list wait_list;  //qiushuo
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -91,6 +92,7 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
+  list_init (&wait_list);//qiushuo
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -120,10 +122,12 @@ thread_start (void)
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void
-thread_tick (void) 
+thread_tick (void)   //qiushuo
 {
   struct thread *t = thread_current ();
-
+  struct list_elem *e = list_begin (&wait_list);
+  struct list_elem *temp;
+  struct thread *p;
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
@@ -134,6 +138,24 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+  if(list_begin (&wait_list)!=NULL)
+  {
+    while(e != list_end(&wait_list))
+      {
+	  temp=e->next;
+     	  p = list_entry (e, struct thread, elem);
+	  if(p->sleep == 1)
+	  {
+	    list_remove (e);
+	    list_push_back (&ready_list, &p->elem);
+	  }
+	  else
+	  {
+	    p->sleep = p->sleep-1;	
+	  }
+	  e = temp;
+      }
+  }
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
@@ -183,7 +205,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-
+  t->sleep=0;
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
      member cannot be observed. */
@@ -321,7 +343,19 @@ thread_yield (void)
   schedule ();
   intr_set_level (old_level);
 }
-
+void    //qiushuo
+thread_sleep (int64_t ticks2) 
+{
+  struct thread *t=thread_current(); 
+  enum intr_level old_level; 
+  old_level = intr_disable ();
+  t->status = THREAD_WAIT;  
+  t->sleep=ticks2;  
+   
+  list_push_back (&wait_list, &t->elem);
+  schedule();
+  intr_set_level (old_level);
+}
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void
@@ -528,7 +562,16 @@ schedule_tail (struct thread *prev)
   /* Start new time slice. */
   thread_ticks = 0;
 
-#ifdef USERPROG
+#ifdef USERPROG  struct list_elem *e;
+
+  ASSERT (intr_get_level () == INTR_OFF);
+
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      func (t, aux);
+    }
   /* Activate the new address space. */
   process_activate ();
 #endif
