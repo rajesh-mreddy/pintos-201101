@@ -99,6 +99,9 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     struct list not_restore_list;       /* List of donate_node that not restore yet */
+    struct lock *acquire_lock;          /* lock the thread is acquiring or acquired */
+    int is_donated;                     /* whether the thread is donated */
+    int priority_to_lower;              /* priority of the thread should be lower but has delay */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
