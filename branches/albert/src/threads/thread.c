@@ -29,6 +29,7 @@ static struct list ready_list;
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
+static struct list wait_list;  //qiushuo
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -37,7 +38,7 @@ static struct thread *idle_thread;
 static struct thread *initial_thread;
 
 /* System average load */             //albert
-fp sys_load_avg;
+int64_t sys_load_avg;
 
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
@@ -102,6 +103,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&wait_list);//qiushuo
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -135,8 +137,11 @@ void
 thread_tick (void) 
 {
   struct thread *t = thread_current ();
-  int64_t total_ticks = timer_ticks();
-  struct list_elem *e;
+  int64_t total_ticks = timer_ticks();  //albert
+  //struct list_elem *e;  //albert
+  struct list_elem *e = list_begin (&wait_list); //qiushuo
+  struct list_elem *temp; //qiushuo
+  struct thread *p; //qiushuo
   
   /* Update statistics. */
   if (t == idle_thread)
@@ -155,7 +160,26 @@ thread_tick (void)
     if(thread_mlfqs)               // mlfqs, recent_cpu ++
       t->recent_cpu = FADDI(t->recent_cpu,1);
   }    
-    
+  /* wake up waiting thread */ //qiushuo
+ 	if(e!=NULL)
+  {
+ 	  while(e != list_end(&wait_list))
+    {
+      temp=e->next;
+      p = list_entry (e, struct thread, elem);
+ 		  if(p->sleep == 1)
+		  {
+ 		    list_remove (e);
+        list_insert_ordered (&ready_list, &p->elem, &list_less, NULL);
+ 		  }
+ 		  else
+ 		  {
+ 		    (p->sleep) --;
+ 		  }
+ 		  e = temp;
+ 	  }
+ 	}
+  
   /* mlfqs, update recent_cpu & sys_load_avg & priority*/    
   if(thread_mlfqs)
   {
@@ -179,7 +203,7 @@ thread_tick (void)
           thread_update_priority(t);     
       }
       list_sort(&ready_list,&list_less,NULL);
-      //list_sort(block_list)    wait for merging alarm-clock
+      list_sort(&wait_list,&list_less,NULL);    
       intr_yield_on_return ();  
     }
   }
@@ -233,6 +257,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  t->sleep = 0;
 
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
@@ -727,6 +752,21 @@ set_system_status(enum system_status s)
 {
   sstatus=s;
 }
+
+/* sleep */ //qiushuo
+void
+thread_sleep (int64_t sleep_ticks)
+{
+  struct thread *t = thread_current();
+  enum intr_level old_level;
+  old_level = intr_disable ();
+  t->status = THREAD_BLOCKED;
+  t->sleep = sleep_ticks;
+  list_insert_ordered (&wait_list, &t->elem, &list_less, NULL);
+  schedule();
+  intr_set_level (old_level);
+}
+
 
 
 /* Offset of `stack' member within `struct thread'.

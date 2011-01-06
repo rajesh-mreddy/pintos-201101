@@ -94,15 +94,14 @@ timer_elapsed (int64_t then)
 }
 
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
-   be turned on. */
+   be turned on. */                          //qiushuo
 void
-timer_sleep (int64_t ticks) 
+timer_sleep (int64_t sleep_ticks) 
 {
-  int64_t start = timer_ticks ();
-
+ 
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  if(sleep_ticks > 0)
+    thread_sleep(sleep_ticks);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
