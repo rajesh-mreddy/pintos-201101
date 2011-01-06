@@ -31,8 +31,7 @@ struct lock
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
-    struct list donate_list;            
-    bool is_donated;            /* whether the lock is donated */
+    struct list donate_list;
   };
 
 bool donate_high_priority(struct list_elem *,struct list_elem *,void *);

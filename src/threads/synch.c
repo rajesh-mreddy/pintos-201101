@@ -186,7 +186,6 @@ lock_init (struct lock *lock)
 {
   ASSERT (lock != NULL);
 
-  lock->is_donated = 0;
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
   list_init (&lock->donate_list);
@@ -218,6 +217,7 @@ lock_acquire (struct lock *lock)
       n.donate_to=lock->holder;
       n.old_priority = (lock->holder)->priority;
       (lock->holder)->priority = thread_current()->priority;
+      (lock->holder)->is_donated += 1;
     }
     else
       n.donate_to=NULL;
@@ -262,13 +262,14 @@ lock_release (struct lock *lock)
   /* Priority donate -- Restore priority */
   if(list_size(&lock->donate_list) > 0)
   {
-    struct donate_node *n;
-    struct list_elem *e;
+    struct donate_node *n;          /* n: node in lock.donate_list */
+    struct donate_node *n_r;        /* n_r: node in thrad.not_restore_list */
+    struct list_elem *e,*e_r;       /* same */
     int old_pri;
     
     e=list_pop_front (&lock->donate_list);
     n=list_entry (e, struct donate_node, elem);
-        
+    
     if(n->new_priority < n->donate_to->priority)
     {
       /* can not restore because the lock's holder were donated 
@@ -280,23 +281,30 @@ lock_release (struct lock *lock)
       /* restore the donated priority */
       old_pri = n->old_priority;
       n->donate_to->priority = old_pri;
-      do
+      n->donate_to->is_donated -= 1;
+      while(!list_empty(&n->donate_to->not_restore_list))
       {
         /* process the situation that thread release the lock but not restore priority */
-        e = list_begin(&n->donate_to->not_restore_list);
-        n = list_entry (e, struct donate_node, elem);
-        if(n->new_priority == old_pri)
+        e_r = list_begin(&n->donate_to->not_restore_list);
+        n_r = list_entry (e_r, struct donate_node, elem);
+        if(n_r->new_priority == old_pri)
         {
-          old_pri = n->old_priority;
-          n->donate_to->priority = old_pri;
-          list_pop_front (&n->donate_to->not_restore_list);
+          old_pri = n_r->old_priority;
+          n_r->donate_to->priority = old_pri;
+          n_r->donate_to->is_donated -= 1;
+          list_pop_front (&n_r->donate_to->not_restore_list);
         }
         else
           break;
-      }while(!list_empty(&n->donate_to->not_restore_list));
+      }
+    }
+  
+    if(n->donate_to->is_donated==0 && list_empty(&n->donate_to->not_restore_list) && n->donate_to->priority_to_lower>0)
+    {
+      n->donate_to->priority = n->donate_to->priority_to_lower;
+      n->donate_to->priority_to_lower = -1;
     }
   }
-  
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
