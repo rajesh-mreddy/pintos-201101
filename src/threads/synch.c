@@ -113,10 +113,10 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
+  sema->value++;
   if (!list_empty (&sema->waiters)) 
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
-  sema->value++;
   intr_set_level (old_level);
 }
 
@@ -199,13 +199,16 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
   
-  /* Priority donate implentmentation */   
-  if(((lock->semaphore).value == 0) 
-     && (((lock->holder)->priority) < (thread_current()->priority)))
+  if(!thread_mlfqs)
   {
-    old_pri = (lock->holder)->priority;
-    (lock->holder)->priority = thread_current()->priority;
-    is_donated = 1;
+    /* Priority donate implentmentation */   
+    if(((lock->semaphore).value == 0) 
+       && (((lock->holder)->priority) < (thread_current()->priority)))
+    {
+      old_pri = (lock->holder)->priority;
+      (lock->holder)->priority = thread_current()->priority;
+      is_donated = 1;
+    }
   }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
@@ -241,11 +244,14 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-  /* Priority onate -- Restore priority */
-  if (is_donated == 1)
-  {
-    (lock->holder)->priority = old_pri;
-    is_donated = 0;
+  
+  if(!thread_mlfqs)
+  {/* Priority onate -- Restore priority */
+    if (is_donated == 1)
+    {
+      (lock->holder)->priority = old_pri;
+      is_donated = 0;
+    }
   }
   lock->holder = NULL;
   sema_up (&lock->semaphore);
