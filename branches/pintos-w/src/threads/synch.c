@@ -219,7 +219,7 @@ lock_acquire (struct lock *lock)
     {
       struct donate_node *n;
       n = (struct donate_nonde *)malloc(sizeof(struct donate_node));
-      cur->acquire_lock = lock;                  /* thread is acquiring the lock */
+      cur->acquire_lock = lock_bak;
       ASSERT(n != NULL);
 
       n->new_priority = cur->priority;
@@ -229,9 +229,12 @@ lock_acquire (struct lock *lock)
         n->old_priority = (lock->holder)->priority;
         (lock->holder)->priority = cur->priority;
         (lock->holder)->is_donated += 1;
+        if(lock!=lock_bak)
+          n->donate_cascade = 1;             /* it donate cascaded. */
       }
       else
         n->donate_to = NULL;
+      
       list_insert_ordered (&lock->donate_list, &n->elem, &donate_high_priority, NULL);
       lock = lock->holder->acquire_lock;     /* lock move to hoder's acquiring lock, */
     }while(lock);                            /* if hoder is not acquiring any lock, */
@@ -293,13 +296,24 @@ lock_release (struct lock *lock)
     }
     else
     {
+      /* process cascaded donate */
+      while(n->donate_cascade)
+      {
+        old_pri = n->old_priority;
+        n->donate_to->priority = old_pri;
+        n->donate_to->is_donated -= 1;
+        e = list_pop_front (&lock->donate_list);
+        n = list_entry (e, struct donate_node, elem);
+      }
+    
       /* restore the donated priority */
       old_pri = n->old_priority;
       n->donate_to->priority = old_pri;
       n->donate_to->is_donated -= 1;
+      
+      /* process the situation that thread release the lock but not restore priority */
       while(!list_empty(&n->donate_to->not_restore_list))
       {
-        /* process the situation that thread release the lock but not restore priority */
         e_r = list_begin(&n->donate_to->not_restore_list);
         n_r = list_entry (e_r, struct donate_node, elem);
         if(n_r->new_priority == old_pri)
@@ -314,6 +328,7 @@ lock_release (struct lock *lock)
       }
     }
   
+    /* process delay of lowering priority */
     if(n->donate_to->is_donated==0 && list_empty(&n->donate_to->not_restore_list) && n->donate_to->priority_to_lower>0)
     {
       n->donate_to->priority = n->donate_to->priority_to_lower;
