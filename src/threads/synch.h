@@ -24,6 +24,7 @@ struct donate_node
     int old_priority;           /* priority before donation */ 
     struct thread * donate_to;  /* therad donate to */
     struct list_elem elem;
+    int donate_cascade;         /* if the donate node is donate cascaded */
   };
 
 /* Lock. */
