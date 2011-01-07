@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "fixed-point.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -14,6 +15,13 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
+/* states the system in system/user state */
+enum system_status
+{
+  SYSTEM_KERNEL,SYSTEM_USER
+};
+  
+  
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -87,11 +95,19 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
+    int priority;                       /* Priority. */   //albert
+    int sleep;                          /* Wait time */  //qiushuo
     struct list_elem allelem;           /* List element for all threads list. */
-
+    int nice;                           /* Nice value */   //albert
+    int64_t recent_cpu;                 /* Recent CPU ticks */   //albert
+    
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    
+    struct list not_restore_list;       /* List of donate_node that not restore yet */  //williamchai
+    struct lock *acquire_lock;          /* lock the thread is acquiring */
+    int is_donated;                     /* whether the thread is donated */
+    int priority_to_lower;              /* priority of the thread should be lower but has delay */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -137,5 +153,12 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
+void thread_update_priority(struct thread *);  //albert
+void thread_update_recent_cpu(struct thread *); //albert
+bool list_less(struct list_elem *, struct list_elem *, void *);  //albert
+void update_load_avg(void);    //albert
+int64_t calc_ready_threads(void);   //albert
+void set_system_status(enum system_status);   //williamchai
+void thread_sleep (int64_t);  //qiushuo
+bool high_priority(struct list_elem *, struct list_elem *, void *);  //williamchai
 #endif /* threads/thread.h */
