@@ -40,7 +40,14 @@ bool donate_high_priority(struct list_elem *elem1,struct list_elem *elem2,void *
   aux = NULL;
   return t1->new_priority > t2->new_priority;
 }
-
+/* list_less_func for semaphore_elem */
+bool sema_high_priority(struct list_elem *elem1,struct list_elem *elem2,void *aux)
+{
+  struct semaphore_elem *s1 = list_entry (elem1, struct semaphore_elem, elem);
+  struct semaphore_elem *s2 = list_entry (elem2, struct semaphore_elem, elem);
+  aux = NULL;
+  return s1->priority > s2->priority;
+}
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -231,6 +238,8 @@ lock_acquire (struct lock *lock)
         (lock->holder)->is_donated += 1;
         if(lock!=lock_bak)
           n->donate_cascade = 1;             /* it donate cascaded. */
+        else
+          n->donate_cascade = 0;
       }
       else
         n->donate_to = NULL;
@@ -350,12 +359,7 @@ lock_held_by_current_thread (const struct lock *lock)
   return lock->holder == thread_current ();
 }
 
-/* One semaphore in a list. */
-struct semaphore_elem 
-  {
-    struct list_elem elem;              /* List element. */
-    struct semaphore semaphore;         /* This semaphore. */
-  };
+
 
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
@@ -399,7 +403,8 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  list_push_back (&cond->waiters, &waiter.elem);
+  waiter.priority = thread_current ()->priority;
+  list_insert_ordered (&cond->waiters, &waiter.elem, &sema_high_priority, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);

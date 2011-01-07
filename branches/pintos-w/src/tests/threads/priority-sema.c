@@ -10,7 +10,7 @@
 #include "devices/timer.h"
 
 static thread_func priority_sema_thread;
-static struct semaphore sema123;
+static struct semaphore sema;
 
 void
 test_priority_sema (void) 
@@ -20,7 +20,7 @@ test_priority_sema (void)
   /* This test does not work with the MLFQS. */
   ASSERT (!thread_mlfqs);
 
-  sema_init (&sema123, 0);
+  sema_init (&sema, 0);
   thread_set_priority (PRI_MIN);
   for (i = 0; i < 10; i++) 
     {
@@ -32,7 +32,7 @@ test_priority_sema (void)
 
   for (i = 0; i < 10; i++) 
     {
-      sema_up (&sema123);
+      sema_up (&sema);
       msg ("Back in main thread."); 
     }
 }
@@ -40,6 +40,6 @@ test_priority_sema (void)
 static void
 priority_sema_thread (void *aux UNUSED) 
 {
-  sema_down (&sema123);
+  sema_down (&sema);
   msg ("Thread %s woke up.", thread_name ());
 }
